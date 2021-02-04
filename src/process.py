@@ -5,7 +5,7 @@ from typing import Dict
 import pandas as pd
 import pytz
 
-from definitions import PATH_PROVIDER_METADATA, PATH_PROVIDER_DATA_RAW
+from definitions import PATH_FETCHED_METADATA, PATH_FETCHED_DATA_JSON
 from datetime import datetime
 
 from helper.time import convert_utc_to_eastern
@@ -26,7 +26,7 @@ def has_json_changed(json_new) -> bool:
     # No prior data, immediately return False
 
     # Return True if new data doesn't match old data
-    with open(PATH_PROVIDER_DATA_RAW, "r") as fin:
+    with open(PATH_FETCHED_DATA_JSON, "r") as fin:
         json_old = json.load(fin)
     return not json_new == json_old
 

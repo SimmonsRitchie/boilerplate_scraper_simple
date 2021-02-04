@@ -12,6 +12,8 @@ A simple template for building Python scrapers. Includes support for:
  - Logging.
  - Custom exceptions.
 
+Scraped data will be saved in data/output.
+
 #### Install
 
 1. Open the terminal. Clone the project repo.
@@ -29,13 +31,13 @@ dependencies. Run:
 
 #### Run
 
-To run in local dev mode, navigate into project folder, add a .env.dev (refer to .env.example for a template) file and
+To run in local dev mode, navigate into project folder, add a .env.dev file (refer to .env.example for a template) and
  run:
 
     `pipenv run dev`
     
-To run in local production mode, navigate into project folder, add a .env.dev (refer to .env.example for a template) file and
- run:
+To run in local production mode, navigate into project folder, add a .env file (refer to .env.example for a template
+) file and run:
  
      `pipenv run prod-local`
 

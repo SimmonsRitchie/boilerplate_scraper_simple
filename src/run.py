@@ -2,16 +2,16 @@ import json
 import logging
 import os
 import pandas as pd
-from definitions import PATH_PROVIDER_DATA_CSV, DIR_DATA_ARCHIVE
+from definitions import PATH_FETCHED_DATA_CSV, DIR_DATA_ARCHIVE
 from exceptions import NoEnvVarError
 from helper.init_program import init_program
 from helper.misc import env_bool, get_files_in_dir, remove_oldest_files
 from helper.time import utc_now, format_datetime_eastern, convert_utc_to_eastern
 from s3 import copy_to_s3
-from scrape import fetch_vax_providers
+from scrape import fetch_data
 from process import has_json_changed, create_metadata
 from slack import send_slack_notification, send_slack_error_notification
-from definitions import PATH_PROVIDER_DATA_RAW, DIR_DATA_OUTPUT, PATH_PROVIDER_METADATA
+from definitions import PATH_FETCHED_DATA_JSON, DIR_DATA_OUTPUT, PATH_FETCHED_METADATA
 from shutil import copyfile
 
 
@@ -28,11 +28,11 @@ def main():
     destination_dir = os.getenv("BUCKET_DESTINATION_DIR")
 
     # FETCH
-    json_new = fetch_vax_providers()
+    json_new = fetch_data()
     scrape_time_utc = utc_now()
 
     # CHECK: prior data exists
-    if not PATH_PROVIDER_DATA_RAW.exists():
+    if not PATH_FETCHED_DATA_JSON.exists():
         logging.info(f"No prior data, data will be saved for first time...")
     else:
         # CHECK: prior data exists, so compare to see if it is different from old
@@ -46,13 +46,14 @@ def main():
             )
 
     # SAVE - json, CSV, metadata
-    logging.info(f"Saving json at: {PATH_PROVIDER_DATA_RAW}")
-    with open(PATH_PROVIDER_DATA_RAW, "w") as fout:
+    logging.info(f"Saving json at: {PATH_FETCHED_DATA_JSON}")
+    with open(PATH_FETCHED_DATA_JSON, "w") as fout:
         json.dump(json_new, fout)
     df_new = pd.DataFrame(json_new)
-    df_new.to_csv(PATH_PROVIDER_DATA_CSV, index=False)
+    df_new.to_csv(PATH_FETCHED_DATA_CSV, index=False)
+    logging.info(f"Saving csv at: {PATH_FETCHED_DATA_CSV}")
     metadata = create_metadata(scrape_time_utc, df_new)
-    with open(PATH_PROVIDER_METADATA, "w") as fout:
+    with open(PATH_FETCHED_METADATA, "w") as fout:
         json.dump(metadata, fout)
 
     # ARCHIVE
@@ -63,10 +64,10 @@ def main():
             "%Y-%m-%d--%X"
         )
         filename_csv_archive = (
-            f"{scrape_datetime_eastern}__{PATH_PROVIDER_DATA_CSV.name}"
+            f"{scrape_datetime_eastern}__{PATH_FETCHED_DATA_CSV.name}"
         )
         path_csv_archive = DIR_DATA_ARCHIVE / filename_csv_archive
-        copyfile(PATH_PROVIDER_DATA_CSV, path_csv_archive)
+        copyfile(PATH_FETCHED_DATA_CSV, path_csv_archive)
         logging.info("Data archived")
         remove_oldest_files(DIR_DATA_ARCHIVE, 5)
     else:
@@ -91,13 +92,13 @@ def main():
     # SEND SLACK NOTIFICATION
     if enable_slack:
         csv_url = (
-            f"https://{bucket_name}/{destination_dir}/{PATH_PROVIDER_DATA_CSV.name}"
+            f"https://{bucket_name}/{destination_dir}/{PATH_FETCHED_DATA_CSV.name}"
         )
         json_url = (
-            f"https://{bucket_name}/{destination_dir}/{PATH_PROVIDER_DATA_RAW.name}"
+            f"https://{bucket_name}/{destination_dir}/{PATH_FETCHED_DATA_JSON.name}"
         )
         meta_url = (
-            f"https://{bucket_name}/{destination_dir}/{PATH_PROVIDER_METADATA.name}"
+            f"https://{bucket_name}/{destination_dir}/{PATH_FETCHED_METADATA.name}"
         )
         msg = (
             f"{' '.join([':syringe:' for _ in range(1, 10)])}\n\n"
